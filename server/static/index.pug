@@ -1,0 +1,16 @@
+doctype
+html(lang="ru")
+head
+    meta(charset='utf-8')
+    meta(name="viewport", content="width=device-width, initial-scale=1.0")
+    title CI-simple
+body
+  form 
+    input(type="text", name="commit", placeholder="Введите хэш коммита")
+    input(type="text", name="commit", placeholder="Введите команду")
+    input(type="submit", value="Запустить сборку")
+  div
+    p= buildsInfo
+
+
+  
