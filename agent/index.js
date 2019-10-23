@@ -21,9 +21,27 @@ function runAgent(num) {
 
   app.post('/build', async (req, res) => {
     const buildInfo = req.body;
-    const buildData = await runBuild(buildInfo);
-    console.log(buildData);
-    notifyBuildResult(agentId, buildInfo.buildId, buildData);  
+    const buildResult = {
+      agentId: agentId,
+      commitHash: buildInfo.commit, 
+      buildId:  buildInfo.buildId,
+      buildStart: new Date()    
+    };
+
+    try {
+      buildResult.buildMessage = await runBuild(buildInfo);
+      if(buildResult.buildMessage.stderr !== '' ) {
+        buildResult.buildStatus = 'failed';
+        buildResult.buildMessage = buildResult.buildMessage.stderr;
+      };
+    }
+    catch(err) {
+      buildResult.buildStatus = 'failed';
+      buildResult.buildMessage = err;
+    } 
+
+    buildResult.buildEnd = new Date();   
+    notifyBuildResult(buildResult);
   })
 
   app.listen(SERVER_PORT + num);

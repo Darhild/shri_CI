@@ -1,10 +1,11 @@
 const express = require('express');
 const path = require('path');
-const Datastore = require('nedb');
-const { AGENT_HOST, SERVER_PORT, REPO_URL, BUILDS_DIR } = require('./../config');
+const { AGENT_HOST, SERVER_PORT, REPO_URL } = require('./../config');
 const { findFreeAgent, runBuildOnAgent, saveBuildResults } = require('./serverHelpers');
+const db = require('./../db');
 
-const static = path.join(__dirname, 'static/index.pug');
+const indexPage = path.join(__dirname, 'static/index.pug');
+const buildPage = path.join(__dirname, 'static/build.pug');
 
 const app = express();
 
@@ -12,16 +13,69 @@ let agents = {};
 
 app.use(express.urlencoded());
 app.use(express.json());
-app.use(express.static(static));
 
-app.get('/', (req, res) => {
-  res.render(static, { buildsInfo: 'Some Information' })
+app.get('/', (req, res) => { 
+  db().then(() => {
+    db.Builds.all()
+    .then(buildsInfo => res.render(indexPage, { buildsInfo }))  
+  })    
+  .catch((err) => console.log(err))    
 })
 
-app.get('/builds_info', (req, res) => {
-  const buildsPath = path.join(__dirname, BUILDS_DIR);
-  const db = new Datastore({filename : `${buildsPath}/builds_info`, autoload: true});
-  db.find({}, (err, doc) => res.end(doc));
+app.post('/run_build', async (req, res) => {
+  const { commit, command } = req.body;
+  let dbResult;
+
+  try {
+    dbResult = await db.Builds.lastId();    
+  }
+  catch(err) {
+    console.log(err)
+  }
+
+  const prevBuildId = dbResult[0].id; 
+  const buildId = prevBuildId + 1 || 1;
+  
+  const [ agentId, agentParams ] = findFreeAgent(agents)
+
+  if (agent) {
+    runBuildOnAgent({
+      agent: agentParams,
+      repoUrl: REPO_URL,
+      buildId,      
+      commit,
+      command      
+    }); 
+    
+    agents[agentId].isFree = false;
+    
+    const data = {
+      commitHash: '',
+      buildStart: '',
+      buildEnd: '',
+      buildStatus: 'pending',
+      buildMessage: ''
+    }
+  
+    db.Builds.create(data)
+      .then(() => { 
+        console.log(`Build number ${buildId} started.`)
+       })
+      .catch((err) => console.log(err))      
+  }
+
+  else console.log('Sorry, no agent is free now. Please try later');    
+})
+
+app.get('/build/:buildId', async (req, res) => {
+  try {
+    const result = await db.Builds.find(req.params.buildId);
+    const build = result[0];
+    res.render(buildPage, { build }) 
+  }
+  catch(err) {
+    res.send(err)
+  }  
 })
 
 app.post('/notify_agent', (req, res) => {
@@ -36,27 +90,11 @@ app.post('/notify_agent', (req, res) => {
   agents[agentId] = agent;  
 })
 
-app.post('/run_build', (req, res) => {
-  const { commit, command } = req.body;
-  const buildId = Math.floor(Math.random() * 1000);
-  const agent = findFreeAgent(agents);
-
-  if (agent) {
-    runBuildOnAgent({
-      agent,
-      repoUrl: REPO_URL,
-      buildId,      
-      commit,
-      command      
-    });    
-  }
-
-  else console.log('Sorry, no agent is free now. Please try later');  
-})
-
-app.post('/notify_build_result', (req, res) => {
-  const buildResult = req.body;  
-  saveBuildResults(buildResult);
+app.post('/notify_build_result', async (req, res) => {
+  const buildResult = req.body; 
+  await saveBuildResults(buildResult);
+  console.log(`Build number ${buildResult.buildId} finished.`)
+  
   agents[buildResult.agentId].isFree = true;
 })
 

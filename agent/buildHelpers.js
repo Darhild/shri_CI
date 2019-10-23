@@ -11,7 +11,7 @@ async function checkoutCommit(commitHash, path) {
 }
 
 async function runCommand(command, path) {
-  return asyncExec(`git diff`, { cwd: path})
+  return asyncExec(`npm ${command}`, { cwd: path})
 }
 
 module.exports = {

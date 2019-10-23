@@ -1,0 +1,40 @@
+doctype
+html(lang="ru")
+head
+    meta(charset='utf-8')
+    meta(name="viewport", content="width=device-width, initial-scale=1.0")
+    title CI-simple
+body
+  h1= 'Build number ' + build.id
+  table
+    tr
+      td
+        strong CommitHash
+      td= build.commitHash
+    tr
+      td 
+        strong Build started at:
+      td= build.buildStart
+    tr
+      td 
+        strong Build ended at:
+      td= build.buildEnd
+    tr
+      td
+        strong Build status: 
+      td= build.buildStatus
+    tr
+      td
+        strong Build message:
+      td= build.buildMessage
+
+
+
+            
+
+            
+
+
+
+
+  

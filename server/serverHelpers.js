@@ -1,13 +1,9 @@
-const fs = require('fs');
-const path = require('path');
-const { promisify } = require('util');
-const Datastore = require('nedb');
+const db = require('./../db');
 const fetch = require('node-fetch');
-const { BUILDS_DIR } = require('./../config');
 
 function findFreeAgent(agents) {
   for (agent in agents) {
-    if (agents[agent].isFree) return agents[agent];
+    if (agents[agent].isFree) return [ agent, agents[agent] ];
   }
 
   return false;
@@ -19,23 +15,29 @@ function runBuildOnAgent({ agent, repoUrl, buildId, commit, command }) {
     headers: {
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ repoUrl, buildId, commit, command })    
+    body: JSON.stringify({ agent, repoUrl, buildId, commit, command })    
   })
   .catch((err) => {
     console.log(`Sorry, build ${buildId} failed, error: ${err}`);
+    db.Builds.update(buildId, { buildStatus: 'failed', buildMessage: err });
   })
 }
 
-function saveBuildResults({ buildId, buildData }) {
-  let buildStatus;  
-  const db = new Datastore({filename : `${BUILDS_DIR}/builds_info`, autoload: true});
-  buildData.stderr ? buildStatus = 'error' : buildStatus = 'success';
-
-  db.insert({
-    buildId,
+async function saveBuildResults({ buildId, commitHash, buildStart, buildEnd, buildStatus, buildMessage }) {
+  const data = {
+    commitHash,
+    buildStart,
+    buildEnd,
     buildStatus,
-    out: buildData.stdout
-  });
+    buildMessage
+  }
+
+  if(data.buildStatus === undefined) {
+    data.buildStatus = 'success';
+    data.buildMessage = buildMessage.stdout
+  }  
+
+  db.Builds.update(buildId, data).then(() => true);  
 }
 
 module.exports = {

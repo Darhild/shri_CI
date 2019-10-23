@@ -5,7 +5,6 @@ const fetch = require('node-fetch');
 const { cloneRepo, checkoutCommit, runCommand } = require('./buildHelpers');
 const { SERVER_HOST, SERVER_PORT, BUILDS_DIR } = require('./../config.js');
 
-
 function notifyAgent (port, agentId) {
   return fetch(`${SERVER_HOST}:${SERVER_PORT}/notify_agent`, {
     method: 'POST',
@@ -21,43 +20,35 @@ function notifyAgent (port, agentId) {
 
 async function runBuild({ repoUrl, commit, command }) {
   const repoName = path.basename(repoUrl);
-  const repoPath = path.join(BUILDS_DIR, repoName);
-  let repoExists;
+  const repoPath = path.join(BUILDS_DIR, repoName); 
 
   if(fs.existsSync(repoPath)) {
     rimraf.sync(repoPath);
-    console.log('deleted');
   }
 
   try {
     await cloneRepo(repoUrl, BUILDS_DIR)
   }
   catch(err) {
-    console.log(err)
+    return err;     
   }  
 
   try {
     await checkoutCommit(commit, repoPath)
   }
   catch(err) {
-    console.log(err)
+    return err;   
   }  
 
   try {
-    return await runCommand(commit, repoPath)
+    return await runCommand(command, repoPath);    
   }
   catch(err) {
-    console.log(err)
+    return err;    
   }  
 }
 
-function notifyBuildResult(agentId, id, data) {
-  const buildResult = {
-    agentId,
-    bildId: id,
-    buildData: data
-  };
-
+function notifyBuildResult(buildResult) {
   return fetch(`${SERVER_HOST}:${SERVER_PORT}/notify_build_result`, {
     method: 'POST',
     headers: {
@@ -66,7 +57,7 @@ function notifyBuildResult(agentId, id, data) {
     body: JSON.stringify(buildResult)
   }) 
   .catch((err) => {
-    console.log('err')
+    console.log(err)
   })
 }
 

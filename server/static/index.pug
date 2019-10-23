@@ -5,12 +5,26 @@ head
     meta(name="viewport", content="width=device-width, initial-scale=1.0")
     title CI-simple
 body
-  form 
+  form(method="POST", action="/run_build") 
     input(type="text", name="commit", placeholder="Введите хэш коммита")
-    input(type="text", name="commit", placeholder="Введите команду")
+    input(type="text", name="command", placeholder="Введите команду")
     input(type="submit", value="Запустить сборку")
-  div
-    p= buildsInfo
+  br
+  if buildsInfo.length
+    table
+      each build in buildsInfo
+        tr
+          td= 'Build number: ' + build.id
+          td= build.buildStatus
+          if build.buildStatus !== 'pending'
+            td: a(href=`/build/${build.id}`) Build Page
+
+
+            
+
+            
+
+
 
 
   
