@@ -48,6 +48,7 @@ app.post('/run_build', async (req, res) => {
     }); 
     
     agents[agentId].isFree = false;
+    console.log(`${agentId} starts working.`)
     
     const data = {
       commitHash: '',
@@ -96,6 +97,7 @@ app.post('/notify_build_result', async (req, res) => {
   console.log(`Build number ${buildResult.buildId} finished.`)
   
   agents[buildResult.agentId].isFree = true;
+  console.log(`${buildResult.agentId} is free now.`)
 })
 
 app.listen(SERVER_PORT);
