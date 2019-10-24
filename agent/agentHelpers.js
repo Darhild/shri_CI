@@ -1,11 +1,9 @@
-const fs = require('fs');
 const path = require('path');
-const rimraf = require('@alexbinary/rimraf');
 const fetch = require('node-fetch');
 const { cloneRepo, checkoutCommit, runCommand } = require('./buildHelpers');
 const { SERVER_HOST, SERVER_PORT, BUILDS_DIR } = require('./../config.js');
 
-function notifyAgent (port, agentId) {
+async function notifyAgent (port, agentId) {
   return fetch(`${SERVER_HOST}:${SERVER_PORT}/notify_agent`, {
     method: 'POST',
     headers: {
@@ -13,21 +11,15 @@ function notifyAgent (port, agentId) {
     },
     body: JSON.stringify({ port, agentId })
   }) 
-  .catch((err) => {
-    console.log(`${agentId} could not register on server, error: ${err}`)
-  }) 
 }
 
-async function runBuild({ repoUrl, commit, command }) {
+async function runBuild({ repoUrl, commit, command }, time) {
   const repoName = path.basename(repoUrl);
-  const repoPath = path.join(BUILDS_DIR, repoName); 
-
-  if(fs.existsSync(repoPath)) {
-    rimraf.sync(repoPath);
-  }
+  const newRepoName = `${repoName}_${commit}_${time}`;
+  const repoPath = path.join(BUILDS_DIR, newRepoName);
 
   try {
-    await cloneRepo(repoUrl, BUILDS_DIR)
+    await cloneRepo(repoUrl, newRepoName, BUILDS_DIR)
   }
   catch(err) {
     return err;     
@@ -48,7 +40,7 @@ async function runBuild({ repoUrl, commit, command }) {
   }  
 }
 
-function notifyBuildResult(buildResult) {
+async function notifyBuildResult(buildResult) {
   return fetch(`${SERVER_HOST}:${SERVER_PORT}/notify_build_result`, {
     method: 'POST',
     headers: {
@@ -56,9 +48,6 @@ function notifyBuildResult(buildResult) {
     },
     body: JSON.stringify(buildResult)
   }) 
-  .catch((err) => {
-    console.log(err)
-  })
 }
 
 module.exports = {

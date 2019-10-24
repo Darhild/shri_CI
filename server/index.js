@@ -35,23 +35,14 @@ app.post('/run_build', async (req, res) => {
 
   const prevBuildId = dbResult[0].id; 
   const buildId = prevBuildId + 1 || 1;
-  
-  const [ agentId, agentParams ] = findFreeAgent(agents)
 
-  if (agent) {
-    runBuildOnAgent({
-      agent: agentParams,
-      repoUrl: REPO_URL,
-      buildId,      
-      commit,
-      command      
-    }); 
-    
+  if (findFreeAgent(agents)) {
+    const [ agentId, agentParams ] = findFreeAgent(agents);
     agents[agentId].isFree = false;
     console.log(`${agentId} starts working.`)
-    
+
     const data = {
-      commitHash: '',
+      commitHash: commit,
       buildStart: '',
       buildEnd: '',
       buildStatus: 'pending',
@@ -61,9 +52,26 @@ app.post('/run_build', async (req, res) => {
     db.Builds.create(data)
       .then(() => { 
         console.log(`Build number ${buildId} started.`)
-       })
-      .catch((err) => console.log(err))      
-  }
+      })
+      .catch((err) => console.log(err))   
+
+    try {
+      await runBuildOnAgent({
+        agent: agentParams,
+        repoUrl: REPO_URL,
+        buildId,      
+        commit,
+        command      
+      });      
+    }
+    catch(err) {
+      console.log(`Server could not connect with ${agentId}, error: ${err}`);
+      delete agents[agentId]; 
+      data.buildStatus = 'failed';
+      data.buildMessage = err;
+      db.Builds.update(buildId, data);  
+    }    
+  }  
 
   else console.log('Sorry, no agent is free now. Please try later');    
 })

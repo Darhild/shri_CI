@@ -2,8 +2,8 @@ const { exec } = require('child_process');
 const { promisify } = require('util');
 const asyncExec = promisify(exec);
 
-async function cloneRepo(url, path) {
-  return asyncExec(`git clone ${url}`, { cwd: path})
+async function cloneRepo(url, name, path) {
+  return asyncExec(`git clone ${url} ${name}`, { cwd: path})
 }
 
 async function checkoutCommit(commitHash, path) {
@@ -11,7 +11,7 @@ async function checkoutCommit(commitHash, path) {
 }
 
 async function runCommand(command, path) {
-  return asyncExec(`npm ${command}`, { cwd: path})
+  return asyncExec(command, { cwd: path})
 }
 
 module.exports = {

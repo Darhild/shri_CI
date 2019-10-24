@@ -4,15 +4,15 @@ const { notifyAgent, runBuild, notifyBuildResult } = require('./agentHelpers');
 
 const numberOfAgents = +process.argv[2];
 
-runAgent(1);
-
 if(numberOfAgents && !isNaN(numberOfAgents)) {
-  for(let i = 2; i <= numberOfAgents; i++) {
+  for(let i = 1; i <= numberOfAgents; i++) {
     runAgent(i);
   }
 }
 
-function runAgent(num) {
+else runAgent(1);
+
+async function runAgent(num) {
   const app = express();
   const agentPort = SERVER_PORT + num;
   const agentId = `agent${num}`;
@@ -28,9 +28,12 @@ function runAgent(num) {
       buildStart: new Date()    
     };
 
+    const timeStr = Date.parse(buildResult.buildStart);
+
     try {
-      buildResult.buildMessage = await runBuild(buildInfo);
-      if(buildResult.buildMessage.stderr !== '' ) {
+      buildResult.buildMessage = await runBuild(buildInfo, timeStr);
+      
+      if(buildResult.buildMessage.stderr.indexOf('ERR') !== -1) {
         buildResult.buildStatus = 'failed';
         buildResult.buildMessage = buildResult.buildMessage.stderr;
       };
@@ -40,13 +43,25 @@ function runAgent(num) {
       buildResult.buildMessage = err;
     } 
 
-    buildResult.buildEnd = new Date();   
-    notifyBuildResult(buildResult);
+    buildResult.buildEnd = new Date(); 
+    
+    try {
+      await notifyBuildResult(buildResult);
+    }
+    catch(err) {
+      console.log(`${buildResult.agentId} could not save results of build number ${buildResult.buildId}, error: ${err}`)
+    }
+    
   })
 
   app.listen(SERVER_PORT + num);
 
   console.log(`${agentId} listens on Port ${agentPort}`);
 
-  notifyAgent(agentPort, agentId);
+  try {
+    await notifyAgent(agentPort, agentId);
+  }
+  catch(err) {
+    console.log(`${agentId} could not register on server, error: ${err}`)
+  }
 }

@@ -17,10 +17,6 @@ function runBuildOnAgent({ agent, repoUrl, buildId, commit, command }) {
     },
     body: JSON.stringify({ agent, repoUrl, buildId, commit, command })    
   })
-  .catch((err) => {
-    console.log(`Sorry, build ${buildId} failed, error: ${err}`);
-    db.Builds.update(buildId, { buildStatus: 'failed', buildMessage: err });
-  })
 }
 
 async function saveBuildResults({ buildId, commitHash, buildStart, buildEnd, buildStatus, buildMessage }) {
